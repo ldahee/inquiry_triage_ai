@@ -1,4 +1,6 @@
+import json
 from typing import List, Optional
+from pydantic import field_validator
 from pydantic_settings import BaseSettings
 
 
@@ -28,7 +30,7 @@ class Settings(BaseSettings):
     environment: str = "development"  # "development" | "production"
 
     # Security
-    # ALLOWED_ORIGINS: JSON 배열 형태로 설정 e.g. '["https://app.example.com"]'
+    # ALLOWED_ORIGINS: JSON 배열 또는 쉼표 구분 문자열 e.g. '["https://app.example.com"]' 또는 'https://app.example.com'
     allowed_origins: List[str] = ["http://localhost:3000"]
     # API 키가 설정된 경우 모든 요청에 X-API-Key 헤더 필요
     api_key: Optional[str] = None
@@ -36,6 +38,20 @@ class Settings(BaseSettings):
     operator_api_key: Optional[str] = None
     # Rate limiting: slowapi 형식 e.g. "20/minute"
     rate_limit: str = "20/minute"
+
+    @field_validator("allowed_origins", mode="before")
+    @classmethod
+    def parse_allowed_origins(cls, v):
+        if not v or (isinstance(v, str) and not v.strip()):
+            return ["http://localhost:3000"]
+        if isinstance(v, list):
+            return v
+        if isinstance(v, str):
+            stripped = v.strip()
+            if stripped.startswith("["):
+                return json.loads(stripped)
+            return [origin.strip() for origin in stripped.split(",") if origin.strip()]
+        return v
 
     model_config = {"env_file": ".env", "extra": "ignore"}
 
