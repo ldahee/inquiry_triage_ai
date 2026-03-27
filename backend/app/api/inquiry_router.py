@@ -3,16 +3,19 @@ FastAPI 문의 처리 API 엔드포인트.
 API 레이어에서는 LangGraph 실행을 직접 구현하지 않고 서비스 레이어만 호출합니다.
 """
 import hmac
+from datetime import datetime, timedelta, timezone
 from typing import Literal, Optional
 
 from fastapi import APIRouter, HTTPException, Request, Security, status
 from fastapi.security import APIKeyHeader
 from pydantic import BaseModel, Field
-from slowapi.errors import RateLimitExceeded  # noqa: F401 (error handler 등록용)
 
-from app.config.limiter import limiter
 from app.config.settings import settings
 from app.services.inquiry_service import InquiryService
+
+KST = timezone(timedelta(hours=9))
+# { key: (count, "YYYY-MM-DD") }
+_daily_counts: dict[str, tuple[int, str]] = {}
 
 router = APIRouter(prefix="/api/v1/inquiries", tags=["inquiries"])
 
@@ -63,12 +66,27 @@ class InquiryErrorResponse(BaseModel):
     error: InquiryErrorDetail
 
 
+def _check_daily_limit(key: str) -> None:
+    today = datetime.now(KST).strftime("%Y-%m-%d")
+    count, date = _daily_counts.get(key, (0, today))
+    if date != today:
+        count = 0
+    if count >= settings.daily_limit:
+        raise HTTPException(
+            status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+            detail={
+                "code": "RATE_LIMIT_EXCEEDED",
+                "message": f"오늘 사용 가능한 횟수({settings.daily_limit}회)를 모두 소진했습니다. 내일 자정 이후 다시 이용해 주세요.",
+            },
+        )
+    _daily_counts[key] = (count + 1, today)
+
+
 @router.post(
     "/respond",
     status_code=status.HTTP_200_OK,
     summary="고객 문의 분류 및 답변 생성",
 )
-@limiter.limit(settings.rate_limit)
 async def respond_to_inquiry(
     request: Request,
     body: InquiryRequest,
@@ -89,6 +107,10 @@ async def respond_to_inquiry(
                 status_code=status.HTTP_403_FORBIDDEN,
                 detail={"code": "FORBIDDEN", "message": "운영자 접근 권한이 없습니다."},
             )
+
+    # 일별 사용량 제한
+    limit_key = body.user_id or request.client.host
+    _check_daily_limit(limit_key)
 
     service = InquiryService()
     result = await service.process_inquiry(

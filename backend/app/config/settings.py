@@ -38,6 +38,8 @@ class Settings(BaseSettings):
     operator_api_key: Optional[str] = None
     # Rate limiting: slowapi 형식 e.g. "20/minute"
     rate_limit: str = "20/minute"
+    # 사용자당 일별 요청 제한 (KST 자정 기준 초기화)
+    daily_limit: int = 10
 
     @field_validator("allowed_origins", mode="before")
     @classmethod
