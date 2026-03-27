@@ -15,6 +15,7 @@ interface InquiryRequestBody {
   channel?: string;
   locale?: string;
   mode: InquiryMode;
+  conversation_id?: string;
 }
 
 async function postInquiry<T>(body: InquiryRequestBody): Promise<T> {
@@ -43,11 +44,13 @@ async function postInquiry<T>(body: InquiryRequestBody): Promise<T> {
 }
 
 export async function submitUserInquiry(
-  inquiryText: string
+  inquiryText: string,
+  conversationId?: string
 ): Promise<UserInquiryResponse> {
   return postInquiry<UserInquiryResponse>({
     inquiry_text: inquiryText,
     mode: "user",
+    conversation_id: conversationId,
   });
 }
 

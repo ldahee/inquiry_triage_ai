@@ -1,4 +1,4 @@
-from typing import Optional
+from typing import Any, Optional
 from typing_extensions import TypedDict
 
 
@@ -15,6 +15,10 @@ class InquiryState(TypedDict):
     channel: Optional[str]
     locale: Optional[str]
     inquiry_id: Optional[str]
+
+    # Conversation
+    conversation_id: Optional[str]
+    chat_history: list[Any]  # list[BaseMessage]
 
     # Routing
     category: Optional[str]

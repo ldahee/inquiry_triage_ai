@@ -1,4 +1,4 @@
-from langchain_core.prompts import ChatPromptTemplate
+from langchain_core.prompts import ChatPromptTemplate, MessagesPlaceholder
 
 from app.prompts.common.system_prompt import COMMON_SYSTEM_PROMPT
 
@@ -21,5 +21,6 @@ ROUTER_SYSTEM = COMMON_SYSTEM_PROMPT + """
 
 router_prompt = ChatPromptTemplate.from_messages([
     ("system", ROUTER_SYSTEM),
+    MessagesPlaceholder("chat_history"),
     ("human", "다음 고객 문의를 분류해주세요:\n\n<customer_inquiry>\n{inquiry_text}\n</customer_inquiry>"),
 ])

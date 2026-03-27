@@ -6,6 +6,12 @@ export interface ExecutionTraceItem {
 
 export interface UserInquiryResponse {
   answer: string;
+  conversation_id: string;
+}
+
+export interface ChatMessage {
+  role: "human" | "ai";
+  content: string;
 }
 
 export interface OperatorInquiryResponse {

@@ -34,6 +34,7 @@ async def run_expert_chain(
     inquiry_text: str,
     category: str,
     retry_count: int = 0,
+    chat_history: list = None,
 ) -> tuple[Optional[ExpertOutput], bool, int]:
     """
     카테고리에 해당하는 Expert Agent 체인을 실행합니다.
@@ -46,7 +47,10 @@ async def run_expert_chain(
 
     for attempt in range(settings.max_retry_count + 1):
         try:
-            result: ExpertOutput = await chain.ainvoke({"inquiry_text": inquiry_text})
+            result: ExpertOutput = await chain.ainvoke({
+                "inquiry_text": inquiry_text,
+                "chat_history": chat_history or [],
+            })
             return result, False, retry_count + attempt
         except OutputParserException as e:
             logger.error(
@@ -73,7 +77,10 @@ async def run_expert_chain(
     # Fallback
     logger.warning("Falling back to fallback_chain for category: %s", category)
     try:
-        result = await fallback_chain.ainvoke({"inquiry_text": inquiry_text})
+        result = await fallback_chain.ainvoke({
+            "inquiry_text": inquiry_text,
+            "chat_history": chat_history or [],
+        })
         return result, True, retry_count + settings.max_retry_count
     except Exception as e:
         logger.error("Fallback chain also failed: %s", e)

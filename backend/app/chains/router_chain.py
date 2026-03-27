@@ -13,13 +13,16 @@ from app.schemas.router_output import RouterOutput
 logger = logging.getLogger(__name__)
 
 
-async def run_router_chain(inquiry_text: str) -> Optional[RouterOutput]:
+async def run_router_chain(inquiry_text: str, chat_history: list = None) -> Optional[RouterOutput]:
     """
     Router Agent 체인을 실행합니다.
     파싱 실패 시 None을 반환합니다.
     """
     try:
-        result: RouterOutput = await router_chain.ainvoke({"inquiry_text": inquiry_text})
+        result: RouterOutput = await router_chain.ainvoke({
+            "inquiry_text": inquiry_text,
+            "chat_history": chat_history or [],
+        })
         return result
     except OutputParserException as e:
         logger.error("Router chain output parse failed: %s", e)

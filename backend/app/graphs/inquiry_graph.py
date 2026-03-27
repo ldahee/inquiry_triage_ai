@@ -88,7 +88,7 @@ async def router_node(state: InquiryState) -> dict:
     logger.info("[%s] router_node: routing inquiry", inquiry_id)
 
     trace = list(state.get("execution_trace", []))
-    result = await run_router_chain(state["inquiry_text"])
+    result = await run_router_chain(state["inquiry_text"], chat_history=state.get("chat_history", []))
     duration_ms = int((time.monotonic() - start) * 1000)
 
     if result is None:
@@ -147,6 +147,7 @@ async def _run_expert_node(state: InquiryState, agent_name: str) -> dict:
         inquiry_text=state["inquiry_text"],
         category=category,
         retry_count=state.get("retry_count", 0),
+        chat_history=state.get("chat_history", []),
     )
     duration_ms = int((time.monotonic() - start) * 1000)
 
@@ -199,7 +200,10 @@ async def fallback_agent_node(state: InquiryState) -> dict:
 
     trace = list(state.get("execution_trace", []))
     try:
-        result = await fallback_chain.ainvoke({"inquiry_text": state["inquiry_text"]})
+        result = await fallback_chain.ainvoke({
+            "inquiry_text": state["inquiry_text"],
+            "chat_history": state.get("chat_history", []),
+        })
         answer = result.answer
         status = "completed"
     except Exception as e:

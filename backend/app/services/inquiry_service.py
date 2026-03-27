@@ -9,7 +9,7 @@ from typing import Optional
 
 from app.config.database import is_db_enabled, _session_factory
 from app.graphs.inquiry_graph import inquiry_graph
-from app.repositories.inquiry_repository import InquiryRepository
+from app.repositories.inquiry_repository import ConversationRepository, InquiryRepository
 from app.schemas.inquiry_state import InquiryState
 
 logger = logging.getLogger(__name__)
@@ -22,11 +22,15 @@ class InquiryService:
         user_id: Optional[str] = None,
         channel: Optional[str] = None,
         locale: Optional[str] = None,
+        conversation_id: Optional[str] = None,
     ) -> dict:
         """
         문의를 처리하고 최종 응답을 반환합니다.
         """
         start_time = time.monotonic()
+
+        conversation_id = conversation_id or str(uuid.uuid4())
+        chat_history = await self._load_chat_history(conversation_id)
 
         initial_state: InquiryState = {
             "inquiry_text": inquiry_text,
@@ -34,6 +38,8 @@ class InquiryService:
             "channel": channel,
             "locale": locale,
             "inquiry_id": str(uuid.uuid4()),
+            "conversation_id": conversation_id,
+            "chat_history": chat_history,
             "category": None,
             "confidence": None,
             "routing_reason": None,
@@ -78,16 +84,21 @@ class InquiryService:
                 }
             }
 
+        answer = final_state.get("answer")
         result = {
             "category": final_state.get("category"),
             "confidence": final_state.get("confidence"),
             "selected_agent": final_state.get("selected_agent"),
-            "answer": final_state.get("answer"),
+            "answer": answer,
             "fallback_used": final_state.get("fallback_used", False),
             "routing_reason": final_state.get("routing_reason"),
             "execution_trace": final_state.get("execution_trace", []),
             "latency_ms": latency_ms,
+            "conversation_id": conversation_id,
         }
+
+        if answer:
+            await self._save_conversation_messages(conversation_id, inquiry_text, answer)
 
         await self._save_to_db(
             inquiry_text=inquiry_text,
@@ -99,6 +110,29 @@ class InquiryService:
         )
 
         return result
+
+    async def _load_chat_history(self, conversation_id: str) -> list:
+        if not is_db_enabled():
+            return []
+        try:
+            async with _session_factory() as session:
+                repo = ConversationRepository(session)
+                return await repo.get_messages(conversation_id)
+        except Exception as e:
+            logger.error("대화 이력 로드 실패 (빈 이력으로 진행): %s", e)
+            return []
+
+    async def _save_conversation_messages(
+        self, conversation_id: str, inquiry_text: str, answer: str
+    ) -> None:
+        if not is_db_enabled():
+            return
+        try:
+            async with _session_factory() as session:
+                repo = ConversationRepository(session)
+                await repo.append_messages(conversation_id, inquiry_text, answer)
+        except Exception as e:
+            logger.error("대화 메시지 저장 실패 (응답에는 영향 없음): %s", e)
 
     async def _save_to_db(
         self,

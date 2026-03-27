@@ -1,4 +1,4 @@
-from langchain_core.prompts import ChatPromptTemplate
+from langchain_core.prompts import ChatPromptTemplate, MessagesPlaceholder
 
 from app.prompts.common.system_prompt import COMMON_SYSTEM_PROMPT
 
@@ -17,5 +17,6 @@ FALLBACK_SYSTEM = COMMON_SYSTEM_PROMPT + """
 
 fallback_prompt = ChatPromptTemplate.from_messages([
     ("system", FALLBACK_SYSTEM),
+    MessagesPlaceholder("chat_history"),
     ("human", "다음 고객 문의에 일반적인 안내 답변을 제공해주세요:\n\n<customer_inquiry>\n{inquiry_text}\n</customer_inquiry>"),
 ])

@@ -8,7 +8,8 @@ import re
 from datetime import datetime, timezone
 from typing import Optional
 
-from sqlalchemy import Boolean, DateTime, Float, Integer, String, Text
+from langchain_core.messages import AIMessage, HumanMessage
+from sqlalchemy import Boolean, DateTime, Float, Integer, String, Text, select
 from sqlalchemy.orm import Mapped, mapped_column
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -47,6 +48,20 @@ class InquiryLog(Base):
 
     execution_trace: Mapped[Optional[str]] = mapped_column(Text, nullable=True)  # JSON string
 
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        nullable=False,
+        default=lambda: datetime.now(timezone.utc),
+    )
+
+
+class ConversationMessage(Base):
+    __tablename__ = "conversation_messages"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    conversation_id: Mapped[str] = mapped_column(String(36), nullable=False, index=True)
+    role: Mapped[str] = mapped_column(String(10), nullable=False)  # "human" | "ai"
+    content: Mapped[str] = mapped_column(Text, nullable=False)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),
         nullable=False,
@@ -120,4 +135,51 @@ class InquiryRepository:
             execution_trace=json.dumps(execution_trace, ensure_ascii=False),
         )
         self._session.add(log)
+        await self._session.commit()
+
+
+# ──────────────────────────────────────────────
+# 대화 레포지토리
+# ──────────────────────────────────────────────
+
+MAX_HISTORY_MESSAGES = 20  # 최근 10턴 (human + ai)
+
+
+class ConversationRepository:
+    def __init__(self, session: AsyncSession):
+        self._session = session
+
+    async def get_messages(self, conversation_id: str) -> list:
+        """대화 이력을 BaseMessage 리스트로 반환합니다."""
+        stmt = (
+            select(ConversationMessage)
+            .where(ConversationMessage.conversation_id == conversation_id)
+            .order_by(ConversationMessage.created_at.desc())
+            .limit(MAX_HISTORY_MESSAGES)
+        )
+        result = await self._session.execute(stmt)
+        rows = list(reversed(result.scalars().all()))
+
+        messages = []
+        for row in rows:
+            if row.role == "human":
+                messages.append(HumanMessage(content=row.content))
+            else:
+                messages.append(AIMessage(content=row.content))
+        return messages
+
+    async def append_messages(
+        self, conversation_id: str, human_text: str, ai_text: str
+    ) -> None:
+        """human + ai 메시지 쌍을 저장합니다."""
+        self._session.add(ConversationMessage(
+            conversation_id=conversation_id,
+            role="human",
+            content=mask_pii(human_text),
+        ))
+        self._session.add(ConversationMessage(
+            conversation_id=conversation_id,
+            role="ai",
+            content=ai_text,
+        ))
         await self._session.commit()

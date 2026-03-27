@@ -1,4 +1,4 @@
-from langchain_core.prompts import ChatPromptTemplate
+from langchain_core.prompts import ChatPromptTemplate, MessagesPlaceholder
 
 from app.prompts.common.system_prompt import COMMON_SYSTEM_PROMPT
 
@@ -25,5 +25,6 @@ TECHNICAL_SUPPORT_SYSTEM = COMMON_SYSTEM_PROMPT + """
 
 technical_support_prompt = ChatPromptTemplate.from_messages([
     ("system", TECHNICAL_SUPPORT_SYSTEM),
+    MessagesPlaceholder("chat_history"),
     ("human", "다음 기술지원 관련 문의에 답변해주세요:\n\n<customer_inquiry>\n{inquiry_text}\n</customer_inquiry>"),
 ])

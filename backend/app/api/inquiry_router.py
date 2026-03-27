@@ -29,6 +29,7 @@ class InquiryRequest(BaseModel):
         default="user",
         description="응답 모드. user=최종 답변만, operator=전체 처리 메타데이터 포함",
     )
+    conversation_id: Optional[str] = Field(default=None, description="대화 ID (멀티턴용, user 모드 전용)")
 
 
 class ExecutionTraceItem(BaseModel):
@@ -39,6 +40,7 @@ class ExecutionTraceItem(BaseModel):
 
 class UserResponse(BaseModel):
     answer: str
+    conversation_id: str
 
 
 class OperatorResponse(BaseModel):
@@ -94,6 +96,7 @@ async def respond_to_inquiry(
         user_id=body.user_id,
         channel=body.channel,
         locale=body.locale,
+        conversation_id=body.conversation_id if body.mode == "user" else None,
     )
 
     if "error" in result:
@@ -113,7 +116,7 @@ async def respond_to_inquiry(
         )
 
     if body.mode == "user":
-        return {"answer": result.get("answer")}
+        return {"answer": result.get("answer"), "conversation_id": result.get("conversation_id")}
 
     # operator mode: 전체 메타데이터 반환
     return {
