@@ -143,6 +143,7 @@ async def _save_to_db(self, ...):
 - FastAPI + Uvicorn
 - LangChain / LangGraph
 - OpenAI API (gpt-4o-mini)
+- LangSmith (트레이싱 / 평가)
 - SQLAlchemy (asyncio) + asyncpg + Alembic
 - slowapi (Rate Limiting)
 - uv (패키지 관리)
@@ -167,11 +168,13 @@ inquiry_triage_ai/
 │   │   ├── graphs/          # LangGraph 상태 그래프 (inquiry_graph)
 │   │   ├── prompts/         # 각 에이전트별 프롬프트
 │   │   ├── repositories/    # DB 저장 레이어
-│   │   ├── schemas/         # Pydantic 스키마
+│   │   ├── schemas/         # Pydantic 스키마 (InquiryState, RouterOutput, ExpertOutput)
 │   │   ├── services/        # 비즈니스 로직 (InquiryService)
 │   │   └── api/             # FastAPI 라우터
 │   ├── main.py              # FastAPI 앱 진입점
 │   ├── tests/
+│   │   ├── test_*.py        # 유닛 / 통합 테스트
+│   │   └── eval/            # LangSmith 평가 스크립트
 │   └── pyproject.toml
 └── frontend/
     ├── app/
@@ -202,11 +205,12 @@ cp .env.example .env
 OPENAI_API_KEY=sk-...
 
 # 선택 사항
-DATABASE_URL=postgresql+asyncpg://user:password@localhost:5432/inquiry_db
-API_KEY=your-api-key
-OPERATOR_API_KEY=your-operator-api-key
-ALLOWED_ORIGINS=["http://localhost:3000"]
-RATE_LIMIT=20/minute
+DATABASE_URL=postgresql+asyncpg://user:password@localhost:5432/inquiry_triage
+
+# LangSmith (선택 사항 — 평가/트레이싱 시 필요)
+LANGSMITH_API_KEY=ls__...
+LANGSMITH_TRACING_V2=true
+LANGSMITH_PROJECT=inquiry-triage-eval
 ```
 
 **2. 의존성 설치 및 실행**
@@ -226,7 +230,11 @@ uvicorn main:app --reload
 **3. 테스트 실행**
 
 ```bash
+# 유닛 / 통합 테스트
 uv run pytest
+
+# LangSmith 평가 (LANGSMITH_API_KEY 설정 필요)
+uv run python -m tests.eval.langsmith_eval
 ```
 
 ### Frontend
@@ -243,6 +251,16 @@ npm run dev
 ---
 
 ## API
+
+### GET `/health`
+
+서버 상태를 확인합니다.
+
+```json
+{"status": "ok"}
+```
+
+---
 
 ### POST `/api/v1/inquiries/respond`
 
@@ -330,6 +348,7 @@ npm run dev
 | `SHIPPING_MODEL` | `gpt-4o-mini` | 배송 에이전트 모델 |
 | `FALLBACK_MODEL` | `gpt-4o-mini` | Fallback 에이전트 모델 |
 | `SAFETY_MODEL` | `gpt-4o-mini` | Safety 에이전트 모델 |
+| `ROUTING_CONFIDENCE_THRESHOLD` | `0.80` | 고신뢰도 라우팅 임계값 |
 | `ROUTING_CONFIDENCE_LOW_THRESHOLD` | `0.50` | Fallback 전환 신뢰도 임계값 |
 | `MAX_LLM_CALLS` | `5` | 요청당 최대 LLM 호출 횟수 |
 | `MAX_RETRY_COUNT` | `2` | 에이전트 최대 재시도 횟수 |
@@ -339,3 +358,6 @@ npm run dev
 | `ALLOWED_ORIGINS` | `["http://localhost:3000"]` | CORS 허용 오리진 (JSON 배열) |
 | `RATE_LIMIT` | `20/minute` | 요청 속도 제한 |
 | `ENVIRONMENT` | `development` | 실행 환경 |
+| `LANGSMITH_API_KEY` | - | LangSmith API 키 (트레이싱/평가 시 필요) |
+| `LANGSMITH_TRACING_V2` | - | LangSmith 트레이싱 활성화 (`true`) |
+| `LANGSMITH_PROJECT` | - | LangSmith 프로젝트 이름 |
