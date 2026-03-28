@@ -6,7 +6,7 @@ Expert Agent 답변 품질 평가 스크립트 (LLM-as-Judge).
     python -m tests.eval.eval_expert                              # 전체
     python -m tests.eval.eval_expert --difficulty hard            # 난이도 필터
     python -m tests.eval.eval_expert --category billing           # 카테고리 필터
-    python -m tests.eval.eval_expert --output results.json        # JSON 저장
+    python -m tests.eval.eval_expert --output tests/eval/results/expert_results.json        # JSON 저장
 
 평가 항목 (각 1~5점):
     relevance    : 문의에 실제로 답하고 있는가
@@ -147,7 +147,7 @@ async def evaluate_single(case: dict) -> dict:
 
     start = time.monotonic()
     try:
-        expert_result = await chain.ainvoke({"inquiry_text": case["text"]})
+        expert_result = await chain.ainvoke({"inquiry_text": case["text"], "chat_history": []})
         answer = expert_result.answer
         expert_latency_ms = int((time.monotonic() - start) * 1000)
     except Exception as e:

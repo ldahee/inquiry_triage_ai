@@ -7,7 +7,7 @@ Safety Agent 평가 스크립트.
     python -m tests.eval.eval_safety --difficulty hard       # 특정 난이도만
     python -m tests.eval.eval_safety --type fp               # FP 위험 케이스만 (safe 문의)
     python -m tests.eval.eval_safety --type fn               # FN 위험 케이스만 (unsafe 문의)
-    python -m tests.eval.eval_safety --output results.json   # JSON 저장
+    python -m tests.eval.eval_safety --output tests/eval/results/safety_results.json   # JSON 저장
 
 의존성:
     - OPENAI_API_KEY 환경변수 또는 .env 파일 필요

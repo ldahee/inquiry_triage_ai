@@ -6,7 +6,7 @@ Router Agent 분류 정확도 평가 스크립트.
     python -m tests.eval.eval_router                         # 전체 실행
     python -m tests.eval.eval_router --difficulty hard       # 특정 난이도만
     python -m tests.eval.eval_router --category billing      # 특정 카테고리만
-    python -m tests.eval.eval_router --output results.json   # JSON 저장
+    python -m tests.eval.eval_router --output tests/eval/results/router_results.json   # JSON 저장
 
 의존성:
     - OPENAI_API_KEY 환경변수 또는 .env 파일 필요

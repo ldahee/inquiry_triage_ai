@@ -8,7 +8,7 @@ End-to-End 파이프라인 평가 스크립트.
     python -m tests.eval.eval_e2e                              # 전체
     python -m tests.eval.eval_e2e --difficulty hard            # 난이도 필터
     python -m tests.eval.eval_e2e --pattern cross_domain       # hard 패턴 필터
-    python -m tests.eval.eval_e2e --output results.json        # JSON 저장
+    python -m tests.eval.eval_e2e --output tests/eval/results/e2e_results.json        # JSON 저장
 
 검증 항목 (자동):
     1. safety_flag == False         모든 케이스 공통
